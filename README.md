@@ -26,8 +26,11 @@ from sns_core import (
     PostAuthor,
     SocialPlatform,
     SocialPost,
+    build_embeds,
+    build_text_embed,
     decode_base64_json,
     get_domain_from_url,
+    post_message,
 )
 ```
 
