@@ -17,6 +17,7 @@ class SocialPost:
     images: list[str] | None = None
     videos: list[str] | None = None
     links: list[str] | None = None
+    file_paths: list[str] | None = None
     created_at: datetime | None = None
 
 

@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any
 
 import requests
 from discord import Embed
@@ -20,6 +21,7 @@ DOMAIN_YEEUN_BSTAGE = "yeeun.bstage.in"
 DOMAIN_PURPLE_KISS = "purplekiss.co.kr"
 DOMAIN_KISS_OF_LIFE = "kissoflife-official.com"
 DOMAIN_KISS_OF_LIFE_BSTAGE = "kissoflife.bstage.in"
+DOMAIN_MNET_PLUS = "artist.mnetplus.world"
 
 DOMAINS_BSTAGE = {
     DOMAIN_H1KEY,
@@ -33,31 +35,35 @@ DOMAINS_BSTAGE = {
 _SOURCE_MAP: dict[str, tuple[str, str]] = {
     DOMAIN_TWITTER: (
         "X",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/X_icon_2.svg/2048px-X_icon_2.svg.png",
+        "https://i.postimg.cc/Hk2WNNMT/X-icon-2-svg.png",
     ),
     DOMAIN_X: (
         "X",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/X_icon_2.svg/2048px-X_icon_2.svg.png",
+        "https://i.postimg.cc/Hk2WNNMT/X-icon-2-svg.png",
     ),
     DOMAIN_INSTAGRAM: (
         "Instagram",
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png",
+        "https://i.postimg.cc/4x5400cs/Instagram-icon.png",
     ),
     DOMAIN_WEVERSE: (
         "Weverse",
-        "https://image.winudf.com/v2/image1/Y28uYmVueC53ZXZlcnNlX2ljb25fMTY5NjQwNDE0MF8wMTM/icon.webp?w=140&fakeurl=1&type=.webp",
+        "https://i.postimg.cc/8zHkYYv8/icon.webp",
     ),
     DOMAIN_THREADS: (
         "Threads",
-        "https://cdn.iconscout.com/icon/free/png-256/free-threads-logo-icon-svg-download-png-8461527.png",
+        "https://i.postimg.cc/RZRCYYHk/free-threads-logo-icon-svg-download-png-8461527.png",
     ),
     DOMAIN_BERRIZ: (
         "Berriz",
-        "https://play-lh.googleusercontent.com/vr-o5CiOCByufCykA7PWFFQSppaEpSQAjXvm5ehthw2IiHQ8L0umnOQdqUmZAEUjkgeJ",
+        "https://i.postimg.cc/wjVxrrNp/unnamed.png",
     ),
+    DOMAIN_MNET_PLUS: (
+        "Plus Chat",
+        "https://i.postimg.cc/2SwjttWf/unnamed.jpg"
+    )
 }
 
-_BSTAGE_SOURCE: tuple[str, str] = ("b.stage", "https://i.imgur.com/xekJ8pd.png")
+_BSTAGE_SOURCE: tuple[str, str] = ("b.stage", "https://i.postimg.cc/B6tvHCXJ/bstage.png")
 
 
 def resolve_source(domain: str) -> tuple[str, str] | None:
@@ -67,10 +73,10 @@ def resolve_source(domain: str) -> tuple[str, str] | None:
 
 
 def _base_embed(
-    *,
-    social_post: SocialPost,
-    description: str,
-    source: tuple[str, str] | None,
+        *,
+        social_post: SocialPost,
+        description: str,
+        source: tuple[str, str] | None,
 ) -> Embed:
     embed = Embed(
         title=social_post.title,
@@ -127,32 +133,80 @@ def is_bot_mentioned(message, bot_id: int) -> bool:
 
 
 def post_message(
-    channel_id: str,
-    content: str,
-    embeds: list[Embed] | None = None,
-    files: list[str] | None = None,
+        channel_id: str,
+        content: str = "",
+        embeds: list[Embed] | None = None,
+        file_paths: list[str] | None = None,
+        show_all: bool = False,
 ) -> requests.Response:
-    url = f"https://discord.com/api/channels/{channel_id}/messages"
-    headers = {"Authorization": f'Bot {os.environ["BOT_TOKEN"]}'}
+    """
+    發送 Discord 訊息到指定 channel
+
+    Args:
+        channel_id: Discord channel id
+        content: 純文字內容
+        embeds: discord.Embed 清單
+        file_paths: 要上傳的本地檔案路徑清單
+        show_all: 是否印出送出的 payload
+
+    Returns:
+        requests.Response
+    """
+    url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    headers = {
+        "Authorization": f'Bot {os.environ["BOT_TOKEN"]}',
+    }
+
     embeds = embeds or []
+    file_paths = file_paths or []
 
-    if files:
-        data = {"content": content}
-        if embeds:
-            data["embeds"] = json.dumps([embed.to_dict() for embed in embeds])
+    embed_payloads = [embed.to_dict() for embed in embeds]
 
-        files_dict = {f"files[{i}]": open(path, "rb") for i, path in enumerate(files)}
+    # Discord 至少要有一種內容
+    if not content and not embed_payloads and not file_paths:
+        raise ValueError("content、embeds、file_paths 不能全部為空")
+
+    if file_paths:
+        payload: dict[str, Any] = {"content": content}
+        if embed_payloads:
+            payload["embeds"] = embed_payloads
+
+        if show_all:
+            print("payload_json =", json.dumps(payload, ensure_ascii=False, indent=2))
+            print("files =", file_paths)
+
+        files_dict = {
+            f"files[{i}]": open(path, "rb")
+            for i, path in enumerate(file_paths)
+        }
+
         try:
-            response = requests.post(url, headers=headers, data=data, files=files_dict)
+            response = requests.post(
+                url,
+                headers=headers,
+                data={"payload_json": json.dumps(payload, ensure_ascii=False)},
+                files=files_dict,
+                timeout=60,
+            )
         finally:
             for file_obj in files_dict.values():
                 file_obj.close()
     else:
-        headers["Content-Type"] = "application/json"
-        data: dict[str, object] = {"content": content}
-        if embeds:
-            data["embeds"] = [embed.to_dict() for embed in embeds]
-        response = requests.post(url, headers=headers, data=json.dumps(data))
+        payload: dict[str, Any] = {"content": content}
+        if embed_payloads:
+            payload["embeds"] = embed_payloads
 
+        if show_all:
+            print("json payload =", json.dumps(payload, ensure_ascii=False, indent=2))
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+
+    print("status_code =", response.status_code)
+    print("response_text =", response.text)
     response.raise_for_status()
     return response
