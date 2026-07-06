@@ -18,7 +18,7 @@ def to_alternative_instagram_url(url: str) -> str:
         return url
 
     parsed_url = urlparse(url)
-    modified_netloc = parsed_url.netloc.replace("instagram.com", "zzinstagram.com")
+    modified_netloc = parsed_url.netloc.replace("instagram.com", "instagram7.com")
     return urlunparse(
         (
             parsed_url.scheme,
