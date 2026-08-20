@@ -64,6 +64,20 @@ _SOURCE_MAP: dict[str, tuple[str, str]] = {
 }
 
 _BSTAGE_SOURCE: tuple[str, str] = ("b.stage", "https://i.postimg.cc/B6tvHCXJ/bstage.png")
+DISCORD_EMBED_DESCRIPTION_LIMIT = 4096
+MARKDOWN_CHARACTERS = ("\\", "`", "*", "_", "~", "|", ">", "[", "]", "(", ")")
+
+
+def escape_discord_description(value: str | None) -> str:
+    """Render external post text literally inside a Discord embed description."""
+    description = value or ""
+    for character in MARKDOWN_CHARACTERS:
+        description = description.replace(character, f"\\{character}")
+    return description.replace("@", "@\u200b")
+
+
+def _build_description(value: str | None) -> str:
+    return escape_discord_description(value)[:DISCORD_EMBED_DESCRIPTION_LIMIT]
 
 
 def resolve_source(domain: str) -> tuple[str, str] | None:
@@ -100,7 +114,7 @@ def _resolve_source_from_post(social_post: SocialPost) -> tuple[str, str] | None
 
 def build_embeds(social_post: SocialPost) -> list[Embed]:
     source = _resolve_source_from_post(social_post)
-    description = (social_post.text or "")[:4096]
+    description = _build_description(social_post.text)
     images = social_post.images
 
     def base() -> Embed:
@@ -118,7 +132,7 @@ def build_embeds(social_post: SocialPost) -> list[Embed]:
 
 def build_text_embed(social_post: SocialPost) -> list[Embed]:
     source = _resolve_source_from_post(social_post)
-    description = (social_post.text or "")[:4096]
+    description = _build_description(social_post.text)
     return [_base_embed(social_post=social_post, description=description, source=source)]
 
 
